@@ -9,19 +9,18 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
 
 @Configuration
 public class ReactiveRedisConfig {
 
-    @Primary
     @Bean
-    public ReactiveRedisConnectionFactory lettuceConnectionFactory() {
+    public LettuceConnectionFactory lettuceConnectionFactory() {
         LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofSeconds(2))
-                .shutdownTimeout(Duration.ZERO)
                 .build();
 
         RedisStandaloneConfiguration standalone = new RedisStandaloneConfiguration("119.23.149.25", 6379);
@@ -31,7 +30,7 @@ public class ReactiveRedisConfig {
     }
 
     @Bean
-    ReactiveRedisTemplate<String, String> reactiveRedisTemplate(ReactiveRedisConnectionFactory factory) {
+    public ReactiveRedisTemplate<String, String> reactiveRedisTemplate(LettuceConnectionFactory factory) {
         return new ReactiveRedisTemplate<>(factory, RedisSerializationContext.string());
     }
 }
