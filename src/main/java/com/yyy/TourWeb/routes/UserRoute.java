@@ -1,9 +1,7 @@
 package com.yyy.TourWeb.routes;
 
 import com.yyy.TourWeb.domain.User;
-import com.yyy.TourWeb.tools.JsonUtils;
-import com.yyy.TourWeb.tools.RedisKey;
-import com.yyy.TourWeb.tools.Result;
+import com.yyy.TourWeb.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
@@ -13,7 +11,6 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
-import static com.yyy.TourWeb.tools.RedisKey.USER;
 import static org.springframework.web.reactive.function.BodyInserters.fromObject;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RequestPredicates.path;
@@ -24,12 +21,17 @@ import static org.springframework.web.reactive.function.server.ServerResponse.ok
 
 /**
  * 用户相关route
+ *
+ * @author yyy
  */
 @Component
 public class UserRoute {
 
     @Autowired
     private ReactiveRedisTemplate<String, String> redisTemplate;
+
+    @Autowired
+    private UserService userService;
 
     /**
      * 用户注册处理
@@ -42,28 +44,9 @@ public class UserRoute {
         return request.bodyToMono(User.class)
                 .filter(user -> user.getAccount() != null)
                 .filter(user -> user.getPassword() != null)
-                .flatMap(user -> {
-                    String redisKey = RedisKey.of(USER, user.getAccount());
-
-                    return redisTemplate.hasKey(redisKey)
-                            .flatMap(bo -> {
-                                if (bo) {
-                                    return ok().body(fromObject(Result.error(1, "账号已存在")));
-                                } else {
-                                    return redisTemplate.opsForValue().set(redisKey, JsonUtils.toString(user))
-                                            .map(flag -> {
-                                                if(flag){
-                                                    return Result.ok();
-                                                }else{
-                                                    return Result.error(2, "数据库Save失败");
-                                                }
-                                            })
-                                            .switchIfEmpty(Mono.just(Result.error(2, "数据库Save失败")))
-                                            .flatMap(result -> ok().body(fromObject(Result.ok())))
-                                            .switchIfEmpty(badRequest().build());
-                                }
-                            }).switchIfEmpty(ok().body(fromObject(Result.error(2, "Redis数据库异常"))));
-                }).switchIfEmpty(badRequest().build());
+                .flatMap(userService::reg)
+                .flatMap(o -> ok().body(fromObject(o)))
+                .switchIfEmpty(badRequest().build());
     }
 
     @Bean
